@@ -1,0 +1,6 @@
+.
+..
+log.txt
+Makefile
+myshell
+myshell.c

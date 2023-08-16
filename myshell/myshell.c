@@ -74,7 +74,11 @@ int main()
 {
     while (1)
     {
+<<<<<<< HEAD
         //初始化
+=======
+        //
+>>>>>>> 1ed07d909825058f422e5c544772647b4efb2f64
         fileType = NONE_REDIR;
         redirFile = NULL;
         errno = 0;

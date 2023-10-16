@@ -1,0 +1,8 @@
+open file:3
+open file:3
+hello worldopen file:3
+open file:3
+
+我是付青云
+my name is kenobi
+欸嘿！

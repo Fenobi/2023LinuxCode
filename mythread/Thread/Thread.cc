@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <vector>
 
+// 当锁是全局的就不用初始化和销毁
 //pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 // 共享资源，火车票

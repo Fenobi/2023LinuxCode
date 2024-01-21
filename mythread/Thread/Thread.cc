@@ -1,13 +1,22 @@
 #include "Thread.hpp"
+#include "Mutex.hpp"
 #include <memory>
 #include <unistd.h>
 #include <vector>
 
 // 当锁是全局的就不用初始化和销毁
-//pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 // 共享资源，火车票
 int tickets = 10000;
+
+// 1.如何看待锁
+//   a. 锁本身就是一个共享资源，全局的变量是要被保护的，锁是用来保护全局的资源的，锁本身也是全局资源，那如何保护锁呢？
+//   b. pthread_mutex_lock:加锁的过程必须是安全的！加锁的过程是原子的！
+//   c. 如果申请成功，就继续向后执行，如果申请暂时没有成功，执行流会如何：阻塞！
+//   d. 谁持有锁，谁进入临界区
+// 2.如何理解加锁和解锁的本质 -- 加锁的过程是原子的 如何做到的？
+// 3.如果我们想简单的使用，该如何进行封装设计
 
 // 多个线程交叉执行本质：就是让调度器尽可能的频繁发生线程调度与切换
 // 线程一般在什么时候发生切换呢？切片时间到了，来了优先级更高的线程，线程等待的时候
@@ -17,8 +26,10 @@ class ThreadData
 {
 public:
     ThreadData(const std::string &threadname, pthread_mutex_t *mutex_p) : _threadname(threadname), _mutex_p(mutex_p)
-    {}
-    ~ThreadData(){}
+    {
+    }
+    ~ThreadData() {}
+
 public:
     std::string _threadname;
     pthread_mutex_t *_mutex_p;
@@ -26,25 +37,29 @@ public:
 
 void *getTickets(void *args)
 {
-    //std::string username = static_cast<const char *>(args);
+    // std::string username = static_cast<const char *>(args);
     ThreadData *td = static_cast<ThreadData *>(args);
     while (true)
     {
         // 加锁和解锁的过程是多个线程串行执行的，程序变慢了
         // 锁只规定互斥访问，没有规定必须让谁优先执行
         // 锁就是真正的让多个执行流进行竞争的结果
-        pthread_mutex_lock(td->_mutex_p);
-        if (tickets > 0)
+        // pthread_mutex_lock(td->_mutex_p);
         {
-            usleep(100); // us
-            std::cout << td->_threadname << " 正在进行抢票:" << tickets << std::endl;
-            tickets--;
-            pthread_mutex_unlock(td->_mutex_p);
-        }
-        else
-        {
-            pthread_mutex_unlock(td->_mutex_p);
-            break;
+            // RAII风格的加锁
+            LockGuard lockguard(&lock); // 每次重新定义时要析构
+            if (tickets > 0)
+            {
+                usleep(100); // us
+                std::cout << td->_threadname << " 正在进行抢票:" << tickets << std::endl;
+                tickets--;
+                // pthread_mutex_unlock(td->_mutex_p);
+            }
+            else
+            {
+                // pthread_mutex_unlock(td->_mutex_p);
+                break;
+            }
         }
         // 模拟形成订单
         usleep(1000);
@@ -58,15 +73,15 @@ int main()
     pthread_mutex_t lock;
     pthread_mutex_init(&lock, nullptr);
     std::vector<pthread_t> tids(NUM);
-    for (int i = 0; i < NUM;++i)
+    for (int i = 0; i < NUM; ++i)
     {
         char buffer[64];
         snprintf(buffer, sizeof buffer, "thread %d", i + 1);
-        ThreadData *td = new ThreadData(buffer,&lock);
+        ThreadData *td = new ThreadData(buffer, &lock);
         pthread_create(&tids[i], nullptr, getTickets, td);
     }
 
-    for(const auto &tid:tids)
+    for (const auto &tid : tids)
     {
         pthread_join(tid, nullptr);
     }
